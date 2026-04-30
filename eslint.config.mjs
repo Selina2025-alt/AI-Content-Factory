@@ -14,7 +14,7 @@ const compat = new FlatCompat({
 
 const config = [
   {
-    ignores: [".next/**"]
+    ignores: [".next/**", ".next-build/**", ".next-dev*/**", "coverage/**"]
   },
   ...compat.config(nextVitals),
   {

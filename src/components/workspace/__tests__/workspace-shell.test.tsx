@@ -452,7 +452,7 @@ describe("WorkspaceShell", () => {
       body: JSON.stringify({
         platform: "xiaohongshu",
         includePlatform: true,
-        enableXiaohongshuImageGeneration: false
+        enableXiaohongshuImageGeneration: true
       }),
       headers: {
         "Content-Type": "application/json"
@@ -460,6 +460,7 @@ describe("WorkspaceShell", () => {
       method: "POST"
     });
     expect(await screen.findByText("新增平台内容生成完成")).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "启用小红书AI生图" })).toBeChecked();
     expect(screen.getByRole("tab", { name: "小红书笔记" })).toHaveAttribute(
       "aria-selected",
       "true"
@@ -623,25 +624,49 @@ describe("WorkspaceShell", () => {
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
       "/api/tasks/task-1/regenerate",
-      expect.objectContaining({
+      {
+        body: JSON.stringify({
+          platform: "xiaohongshu",
+          includePlatform: true,
+          enableXiaohongshuImageGeneration: true
+        }),
+        headers: {
+          "Content-Type": "application/json"
+        },
         method: "POST"
-      })
+      }
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
       "/api/tasks/task-1/regenerate",
-      expect.objectContaining({
+      {
+        body: JSON.stringify({
+          platform: "twitter",
+          includePlatform: true
+        }),
+        headers: {
+          "Content-Type": "application/json"
+        },
         method: "POST"
-      })
+      }
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       3,
       "/api/tasks/task-1/regenerate",
-      expect.objectContaining({
+      {
+        body: JSON.stringify({
+          platform: "videoScript",
+          includePlatform: true
+        }),
+        headers: {
+          "Content-Type": "application/json"
+        },
         method: "POST"
-      })
+      }
     );
     expect(await screen.findByText("一键全生成完成：3 个平台已生成")).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "小红书笔记" }));
+    expect(screen.getByRole("checkbox", { name: "启用小红书AI生图" })).toBeChecked();
   });
 
   it("passes the selected Twitter output mode when regenerating", async () => {

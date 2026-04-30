@@ -500,13 +500,22 @@ export function WorkspaceShell(props: {
   async function handleRegenerate(options?: {
     includePlatform?: boolean;
     targetPlatform?: PlatformId;
+    forceEnableXiaohongshuImageGeneration?: boolean;
   }): Promise<boolean> {
     const targetPlatform = options?.targetPlatform ?? activePlatform;
     const includePlatform = Boolean(options?.includePlatform);
+    const shouldEnableXiaohongshuImageGeneration =
+      targetPlatform === "xiaohongshu"
+        ? (options?.forceEnableXiaohongshuImageGeneration ??
+          enableXiaohongshuImageGeneration)
+        : false;
 
     setIsRegenerating(true);
     setGeneratingPlatform(targetPlatform);
     setPublishError(null);
+    if (targetPlatform === "xiaohongshu" && shouldEnableXiaohongshuImageGeneration) {
+      setEnableXiaohongshuImageGeneration(true);
+    }
     setStatusText(
       includePlatform
         ? `正在生成 ${platformLabels[targetPlatform]} 并加入当前任务...`
@@ -529,7 +538,7 @@ export function WorkspaceShell(props: {
 
       if (targetPlatform === "xiaohongshu") {
         regenerateBody.enableXiaohongshuImageGeneration =
-          enableXiaohongshuImageGeneration;
+          shouldEnableXiaohongshuImageGeneration;
       }
       const response = await fetch(`/api/tasks/${props.initialTaskId}/regenerate`, {
         method: "POST",
@@ -603,7 +612,8 @@ export function WorkspaceShell(props: {
       for (const platform of targets) {
         const success = await handleRegenerate({
           targetPlatform: platform,
-          includePlatform: true
+          includePlatform: true,
+          forceEnableXiaohongshuImageGeneration: platform === "xiaohongshu"
         });
 
         if (success) {
@@ -770,7 +780,9 @@ export function WorkspaceShell(props: {
                     onClick={() => {
                       void handleRegenerate({
                         targetPlatform: platform,
-                        includePlatform: true
+                        includePlatform: true,
+                        forceEnableXiaohongshuImageGeneration:
+                          platform === "xiaohongshu"
                       });
                     }}
                   >

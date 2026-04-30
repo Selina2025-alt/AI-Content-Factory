@@ -52,3 +52,47 @@
 1. Add user auth and workspace membership tables.
 2. Move keyword targets + sync/history tables to explicit `workspace_id` columns.
 3. Remove category/account dependency on localStorage entirely.
+
+## Confirmed deferred phase
+
+The next confirmed phase is the `standard multi-user registration + isolation` track.
+This phase has been selected as the preferred direction, but is intentionally deferred for a later session.
+
+### Scope
+1. Add a `Register` button on the login screen and a `/register` page.
+2. Allow each new user to create their own email/password account.
+3. Automatically create a dedicated workspace for each registered account.
+4. Isolate per-workspace data for:
+   - monitoring categories, creators, query history, topic library
+   - drafts, tasks, task contents, content library
+   - generated images, covers, exports, uploaded skills
+   - per-user API keys and publishing configuration
+
+### Required backend changes
+1. Keep `.env.local` for system-level defaults only.
+2. Move user-owned API keys from env-style assumptions into encrypted database storage.
+3. Add `workspace_id` to content-creation tables that are still globally shared:
+   - `drafts`
+   - `tasks`
+   - `task_contents`
+   - `platform_settings`
+   - `skills`
+   - `skill_files`
+   - `skill_learning_results`
+   - `skill_bindings`
+   - `history_actions`
+   - `library_entries`
+4. Change generated asset and skill storage paths to workspace-scoped directories.
+
+### Out of scope for this phase
+1. Team collaboration inside one workspace.
+2. Member invitations.
+3. Fine-grained role/permission management.
+
+### Suggested execution order
+1. Registration UI and `/api/auth/register`.
+2. Workspace-aware schema migration for content-creation tables.
+3. Repository and route handler filtering by session `workspaceId`.
+4. Encrypted API key storage and settings UI migration.
+5. Workspace-specific file storage migration for images and skills.
+6. README and deployment documentation update.

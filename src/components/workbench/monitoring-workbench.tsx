@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { DEFAULT_SILICONFLOW_MODEL } from "@/lib/analysis-models";
 import {
@@ -573,6 +573,26 @@ export function MonitoringWorkbench() {
       return matchesKeyword && matchesPlatform;
     });
   }, [historyKeywordFilter, historyPlatformFilter, historyQueries]);
+  const loadGlobalAnalysisSettings = useCallback(async () => {
+    if (typeof fetch !== "function") {
+      return;
+    }
+
+    try {
+      const response = await fetch(withWorkspaceQuery("/api/analysis/settings", workspaceId), {
+        cache: "no-store"
+      });
+      const payload = (await response.json()) as AnalysisSettingsResponsePayload;
+
+      if (!response.ok || !payload.settings) {
+        return;
+      }
+
+      setGlobalAnalysisSettings(payload.settings);
+    } catch {
+      // Keep default settings when the API is unavailable.
+    }
+  }, [workspaceId]);
 
   useEffect(() => {
     if (process.env.NODE_ENV === "test") {
@@ -800,7 +820,7 @@ export function MonitoringWorkbench() {
     }
 
     void loadGlobalAnalysisSettings();
-  }, [hasLoadedWorkspaceId, workspaceId]);
+  }, [hasLoadedWorkspaceId, loadGlobalAnalysisSettings]);
 
   useEffect(() => {
     if (!analysisReports.some((item) => item.id === selectedReportId)) {
@@ -1230,27 +1250,6 @@ export function MonitoringWorkbench() {
       setHistoryDetail(null);
     } finally {
       setHistoryDetailLoading(false);
-    }
-  }
-
-  async function loadGlobalAnalysisSettings() {
-    if (typeof fetch !== "function") {
-      return;
-    }
-
-    try {
-      const response = await fetch(withWorkspaceQuery("/api/analysis/settings", workspaceId), {
-        cache: "no-store"
-      });
-      const payload = (await response.json()) as AnalysisSettingsResponsePayload;
-
-      if (!response.ok || !payload.settings) {
-        return;
-      }
-
-      setGlobalAnalysisSettings(payload.settings);
-    } catch {
-      // Keep default settings when the API is unavailable.
     }
   }
 

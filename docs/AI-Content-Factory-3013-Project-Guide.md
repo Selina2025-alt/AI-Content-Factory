@@ -1,5 +1,14 @@
 ﻿# AI Content Factory (3013) 项目全景文档
 
+## 0. 配套文档
+
+建议按下面顺序阅读：
+
+1. `README.md`
+2. `docs/Repository-Inventory.md`
+3. `docs/AI-Content-Factory-3013-Project-Guide.md`
+4. `docs/Multi-User-Persistence-Phase1.md`
+
 ## 1. 项目定位
 
 本项目是一个双 Agent 融合工作台（端口 3013）：
@@ -100,6 +109,8 @@ src/
 
 ## 5. 前端页面与关键组件
 
+补充：完整组件与目录清单见 `docs/Repository-Inventory.md`，本节只保留业务主组件。
+
 ### 5.1 数据采集与选题分析 Agent
 
 1. 工作台：`src/components/workbench/monitoring-workbench.tsx`
@@ -122,6 +133,8 @@ src/
 ---
 
 ## 6. 后端 API 总览
+
+补充：完整 route 文件清单见 `docs/Repository-Inventory.md`。
 
 ### 6.1 采集与分析
 
@@ -202,6 +215,13 @@ src/
 3. `analysis_snapshots` / `analysis_topics` / `analysis_evidence_items`
 4. `topic_library_entries`
 
+### 7.4 登录与工作空间相关表
+
+1. `auth_users`
+2. `auth_workspaces`
+3. `auth_workspace_members`
+4. `auth_sessions`
+
 ---
 
 ## 8. 业务主链路（当前 3013 一致）
@@ -252,4 +272,59 @@ npm run build
 1. 新增 API 时同步更新本文件第 6 节。
 2. 新增数据表/字段时同步更新第 7 节。
 3. 新增业务流程节点时同步更新第 8 节。
+
+---
+
+## 12. 已确认待办（暂缓开发）
+
+### 12.1 标准版多账号注册与数据隔离
+
+这是当前已经确认方向、但本轮不开发的下一阶段能力。
+
+目标：
+
+1. 登录页新增 `注册` 按钮，进入 `/register`
+2. 新用户可设置自己的邮箱、密码、显示名称，并完成注册后登录
+3. 系统为每个注册用户自动创建独立 `workspace`
+4. 每个账号独立管理自己的：
+   - API Key / 发布平台配置
+   - 监控分类、监控账号、抓取历史、选题库
+   - 草稿、任务、内容库、生成内容
+   - 图片、首图、导出文件、技能配置
+
+为什么必须做这一步：
+
+1. 当前项目虽然已有登录与 session，但内容创作侧仍有不少全局共享数据
+2. 只补“注册按钮”并不能真正实现多用户隔离
+3. 如果以后要通过 GitHub 给别人部署使用，必须让每个人都能管理自己的 API 和历史数据
+
+实施范围（标准版）：
+
+1. 账号注册
+2. 用户自动创建独立 workspace
+3. 内容创作表补齐 `workspace_id`
+4. 用户 API Key 改为数据库加密存储
+5. 生成图片、技能上传、导出文件改为按 workspace 分目录
+
+第一期不做：
+
+1. 多成员协作
+2. 邀请加入 workspace
+3. 细粒度权限角色系统
+
+建议实施顺序：
+
+1. 注册页与注册 API
+2. 数据库 schema 迁移：内容创作表补 `workspace_id`
+3. repository / API / 页面查询全部按 session 的 `workspaceId` 过滤
+4. API Key 加密存储与设置页改造
+5. 资产目录从全局路径迁移到 `workspace` 路径
+6. README、部署文档、初始化脚本更新
+
+建议优先参考文档：
+
+1. `docs/Multi-User-Persistence-Phase1.md`
+2. `src/lib/auth/auth-service.ts`
+3. `src/lib/db/schema.ts`
+4. `src/lib/db/content-creation-schema.ts`
 

@@ -35,6 +35,10 @@ describe("HistorySidebar", () => {
 
     expect(screen.getByText("效率文章")).toBeInTheDocument();
     expect(screen.queryByText("增长 thread")).toBeNull();
+    expect(screen.getByRole("link", { name: /效率文章/u })).toHaveAttribute(
+      "href",
+      "/content-creation/workspace/task-1"
+    );
 
     await user.click(screen.getByRole("button", { name: "重命名 效率文章" }));
     await user.clear(screen.getByDisplayValue("效率文章"));

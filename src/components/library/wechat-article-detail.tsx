@@ -45,7 +45,9 @@ export function WechatArticleDetail(props: { detail: WechatLibraryDetail }) {
           <p className="library-detail-card__summary">{props.detail.summary}</p>
           <div className="library-detail-card__meta">
             <span>最近更新：{formatUpdatedAt(props.detail.updatedAt)}</span>
-            <Link href={`/workspace/${props.detail.taskId}`}>打开工作台继续编辑</Link>
+            <Link href={`/content-creation/workspace/${props.detail.taskId}`}>
+              打开工作台继续编辑
+            </Link>
           </div>
 
           <section className="library-detail-card__body">

@@ -88,7 +88,7 @@ export function HistorySidebar({
             >
               <Link
                 className="history-card__select"
-                href={`/workspace/${item.id}`}
+                href={`/content-creation/workspace/${item.id}`}
                 onClick={() => onSelect(item.id)}
               >
                 <span className="history-card__title">{item.title}</span>

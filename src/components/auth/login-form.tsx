@@ -64,7 +64,7 @@ export default function LoginForm() {
             <input
               type="email"
               autoComplete="username"
-              placeholder="admin@aicontentfactory.local"
+              placeholder="请输入邮箱"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
             />
@@ -74,7 +74,7 @@ export default function LoginForm() {
             <input
               type="password"
               autoComplete="current-password"
-              placeholder="输入密码"
+              placeholder="请输入密码"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
             />
@@ -84,9 +84,6 @@ export default function LoginForm() {
           </button>
         </form>
         {message ? <p className="login-shell__message">{message}</p> : null}
-        <p className="login-shell__hint">
-          首次默认账号：`admin@aicontentfactory.local` / `Admin@123456`
-        </p>
       </div>
     </section>
   );

@@ -108,31 +108,48 @@ describe("SettingsShell", () => {
     await user.click(within(wechatPanel).getByRole("button", { name: "保存" }));
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        "/api/platform-settings/wechat",
-        expect.objectContaining({
-          method: "PATCH",
-          body: JSON.stringify({
-            baseRules: [],
-            enabledSkillIds: ["skill-1"]
-          })
-        })
-      );
+      const saveCall = fetchMock.mock.calls.find(([url, init]) => {
+        if (typeof url !== "string") {
+          return false;
+        }
+
+        return (
+          url.startsWith("/api/platform-settings/wechat") &&
+          init?.method === "PATCH" &&
+          typeof init.body === "string" &&
+          init.body.includes("\"skill-1\"")
+        );
+      });
+
+      expect(saveCall).toBeDefined();
+      const payload = JSON.parse(String(saveCall?.[1]?.body));
+      expect(payload).toMatchObject({
+        baseRules: [],
+        enabledSkillIds: ["skill-1"]
+      });
     });
 
     await user.click(within(wechatPanel).getByRole("button", { name: "重置" }));
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        "/api/platform-settings/wechat",
-        expect.objectContaining({
-          method: "PATCH",
-          body: JSON.stringify({
-            baseRules: [],
-            enabledSkillIds: []
-          })
-        })
-      );
+      const resetCall = [...fetchMock.mock.calls].reverse().find(([url, init]) => {
+        if (typeof url !== "string") {
+          return false;
+        }
+
+        return (
+          url.startsWith("/api/platform-settings/wechat") &&
+          init?.method === "PATCH" &&
+          typeof init.body === "string"
+        );
+      });
+
+      expect(resetCall).toBeDefined();
+      const payload = JSON.parse(String(resetCall?.[1]?.body));
+      expect(payload).toMatchObject({
+        baseRules: [],
+        enabledSkillIds: []
+      });
     });
 
     expect(within(wechatPanel).getByText("暂未选择内容 skills")).toBeInTheDocument();

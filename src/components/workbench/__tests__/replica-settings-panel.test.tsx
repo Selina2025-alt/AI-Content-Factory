@@ -14,7 +14,7 @@ describe("replica settings panel", () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : input.toString();
 
-      if (url === "/api/analysis/settings") {
+      if (url.startsWith("/api/analysis/settings")) {
         return {
           ok: true,
           json: async () => ({
@@ -65,7 +65,7 @@ describe("replica settings panel", () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        "/api/analysis/settings",
+        expect.stringMatching(/^\/api\/analysis\/settings(?:\?.*)?$/),
         expect.objectContaining({
           method: "POST"
         })

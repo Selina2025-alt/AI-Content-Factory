@@ -195,6 +195,13 @@ interface MonitoringCategoriesResponsePayload {
   categories?: PersistedCategoryPayload[];
 }
 
+interface AuthSessionResponsePayload {
+  authenticated?: boolean;
+  user?: {
+    workspaceId: string;
+  };
+}
+
 const MONITORING_CATEGORIES_STORAGE_KEY_PREFIX =
   "topic-selection-agent:monitoring-categories:v2";
 const MONITORING_WORKSPACE_STORAGE_KEY = "topic-selection-agent:workspace-id:v1";
@@ -578,14 +585,49 @@ export function MonitoringWorkbench() {
       return;
     }
 
-    try {
-      const rawWorkspaceId = window.localStorage.getItem(MONITORING_WORKSPACE_STORAGE_KEY);
-      setWorkspaceId(normalizeWorkspaceId(rawWorkspaceId));
-    } catch {
-      setWorkspaceId(DEFAULT_WORKSPACE_ID);
-    } finally {
-      setHasLoadedWorkspaceId(true);
+    let cancelled = false;
+
+    async function hydrateWorkspaceId() {
+      try {
+        if (typeof fetch === "function") {
+          const response = await fetch("/api/auth/session", {
+            cache: "no-store"
+          });
+
+          if (response.ok) {
+            const payload = (await response.json()) as AuthSessionResponsePayload;
+            const workspaceFromSession = payload.user?.workspaceId;
+
+            if (workspaceFromSession) {
+              if (!cancelled) {
+                setWorkspaceId(normalizeWorkspaceId(workspaceFromSession));
+              }
+              return;
+            }
+          }
+        }
+
+        const rawWorkspaceId = window.localStorage.getItem(MONITORING_WORKSPACE_STORAGE_KEY);
+
+        if (!cancelled) {
+          setWorkspaceId(normalizeWorkspaceId(rawWorkspaceId));
+        }
+      } catch {
+        if (!cancelled) {
+          setWorkspaceId(DEFAULT_WORKSPACE_ID);
+        }
+      } finally {
+        if (!cancelled) {
+          setHasLoadedWorkspaceId(true);
+        }
+      }
     }
+
+    void hydrateWorkspaceId();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {

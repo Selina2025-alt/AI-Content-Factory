@@ -13,6 +13,7 @@ const createMonitoringRepositoryMock = vi.fn(() => repository);
 const getGlobalAnalysisSettingsMock = vi.fn();
 const saveGlobalAnalysisSettingsMock = vi.fn();
 const syncDailyAnalysisTaskMock = vi.fn();
+const resolveAuthRequestContextMock = vi.fn();
 
 vi.mock("@/lib/db/monitoring-repository", () => ({
   createMonitoringRepository: createMonitoringRepositoryMock,
@@ -24,6 +25,10 @@ vi.mock("@/lib/analysis-scheduler", () => ({
   syncDailyAnalysisTask: syncDailyAnalysisTaskMock
 }));
 
+vi.mock("@/lib/auth/request-context", () => ({
+  resolveAuthRequestContext: resolveAuthRequestContextMock
+}));
+
 describe("analysis settings route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -33,6 +38,16 @@ describe("analysis settings route", () => {
       time: "08:00",
       provider: "SiliconFlow",
       model: "Pro/zai-org/GLM-5"
+    });
+    resolveAuthRequestContextMock.mockReturnValue({
+      sessionToken: "token",
+      user: {
+        id: "user-1",
+        email: "admin@aicontentfactory.local",
+        displayName: "Admin",
+        workspaceId: "default-workspace",
+        workspaceName: "默认工作空间"
+      }
     });
     syncDailyAnalysisTaskMock.mockReturnValue({
       ok: true,

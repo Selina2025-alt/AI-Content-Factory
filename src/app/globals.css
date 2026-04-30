@@ -87,6 +87,10 @@ a {
   gap: 10px;
 }
 
+.agent-top-nav__spacer {
+  flex: 1;
+}
+
 .agent-top-nav__link {
   padding: 10px 14px;
   border-radius: 999px;
@@ -112,6 +116,93 @@ a {
   background: linear-gradient(135deg, rgba(157, 61, 32, 0.18) 0%, rgba(109, 36, 16, 0.12) 100%);
   border-color: rgba(157, 61, 32, 0.28);
   color: #5d1f0d;
+}
+
+.agent-top-nav__workspace {
+  font-size: 12px;
+  color: #7b5a45;
+  font-weight: 600;
+  border: 1px dashed rgba(117, 71, 35, 0.25);
+  border-radius: 999px;
+  padding: 7px 11px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.agent-top-nav__logout {
+  color: #7f2c15;
+}
+
+.login-shell {
+  min-height: calc(100vh - 68px);
+  display: grid;
+  place-items: center;
+  padding: 28px 18px;
+}
+
+.login-shell__card {
+  width: min(420px, 100%);
+  border: 1px solid var(--replica-line);
+  border-radius: 20px;
+  background: var(--replica-panel);
+  box-shadow: var(--replica-shadow-sm);
+  padding: 22px;
+}
+
+.login-shell__card h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.login-shell__card p {
+  margin: 10px 0 0;
+  color: var(--replica-text-secondary);
+}
+
+.login-shell__form {
+  margin-top: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.login-shell__form label {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--replica-text);
+}
+
+.login-shell__form input {
+  width: 100%;
+  border: 1px solid var(--replica-line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #fff;
+}
+
+.login-shell__form button {
+  margin-top: 4px;
+  border-radius: 12px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, #9d3d20, #7d2f18);
+  color: #fff;
+  font-weight: 700;
+}
+
+.login-shell__form button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.login-shell__message {
+  margin-top: 10px;
+  color: #b1432b;
+  font-weight: 600;
+}
+
+.login-shell__hint {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--replica-text-tertiary);
 }
 
 @keyframes replica-fade-in {

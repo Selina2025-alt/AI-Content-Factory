@@ -7,7 +7,7 @@ import {
   saveGlobalAnalysisSettings
 } from "@/lib/db/monitoring-repository";
 import { syncDailyAnalysisTask } from "@/lib/analysis-scheduler";
-import { resolveWorkspaceIdFromRequest } from "@/lib/workspace/workspace-context";
+import { resolveAuthRequestContext } from "@/lib/auth/request-context";
 
 interface AnalysisSettingsRequestBody {
   enabled?: boolean;
@@ -33,9 +33,15 @@ function normalizeTime(input: string) {
 
 export async function GET(request: NextRequest) {
   const repository = createMonitoringRepository();
-  const workspaceId = resolveWorkspaceIdFromRequest(request);
 
   try {
+    const authContext = resolveAuthRequestContext(repository, request);
+
+    if (!authContext) {
+      return NextResponse.json({ error: "authentication required" }, { status: 401 });
+    }
+
+    const workspaceId = authContext.user.workspaceId;
     const settings = getGlobalAnalysisSettings(repository, workspaceId);
 
     return NextResponse.json({ settings });
@@ -46,9 +52,15 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const repository = createMonitoringRepository();
-  const workspaceId = resolveWorkspaceIdFromRequest(request);
 
   try {
+    const authContext = resolveAuthRequestContext(repository, request);
+
+    if (!authContext) {
+      return NextResponse.json({ error: "authentication required" }, { status: 401 });
+    }
+
+    const workspaceId = authContext.user.workspaceId;
     const body = (await request.json()) as AnalysisSettingsRequestBody;
     const settings = {
       enabled: body.enabled ?? true,

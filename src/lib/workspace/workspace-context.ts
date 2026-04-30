@@ -1,9 +1,10 @@
 import type { NextRequest } from "next/server";
 
 export const DEFAULT_WORKSPACE_ID = "default-workspace";
-const WORKSPACE_ID_HEADER = "x-workspace-id";
-const WORKSPACE_ID_COOKIE = "acf_workspace_id";
-const WORKSPACE_ID_QUERY = "workspaceId";
+export const WORKSPACE_ID_HEADER = "x-workspace-id";
+export const WORKSPACE_ID_COOKIE = "acf_workspace_id";
+export const WORKSPACE_ID_QUERY = "workspaceId";
+export const SESSION_TOKEN_COOKIE = "acf_session_token";
 
 function sanitizeWorkspaceId(value: string) {
   return value

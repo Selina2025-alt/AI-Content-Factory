@@ -7,10 +7,8 @@ import {
   replaceMonitorCategoriesSnapshot
 } from "@/lib/db/monitoring-repository";
 import type { ReplicaTrackedPlatformId } from "@/lib/replica-workbench-data";
-import {
-  DEFAULT_WORKSPACE_ID,
-  resolveWorkspaceIdFromRequest
-} from "@/lib/workspace/workspace-context";
+import { DEFAULT_WORKSPACE_ID } from "@/lib/workspace/workspace-context";
+import { resolveAuthRequestContext } from "@/lib/auth/request-context";
 
 interface CategoryCreatorPayload {
   id?: string;
@@ -143,9 +141,15 @@ function normalizeCategoriesPayload(input: CategoryPayload[], workspaceId: strin
 
 export async function GET(request: NextRequest) {
   const repository = createMonitoringRepository();
-  const workspaceId = resolveWorkspaceIdFromRequest(request);
 
   try {
+    const authContext = resolveAuthRequestContext(repository, request);
+
+    if (!authContext) {
+      return NextResponse.json({ error: "authentication required", categories: [] }, { status: 401 });
+    }
+
+    const workspaceId = authContext.user.workspaceId;
     const categories = listMonitorCategories(repository, workspaceId);
     const creators = listMonitorCategoryCreators(repository, workspaceId);
     const creatorsByCategoryId = creators.reduce<Record<string, typeof creators>>((result, creator) => {
@@ -186,9 +190,15 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const repository = createMonitoringRepository();
-  const workspaceId = resolveWorkspaceIdFromRequest(request);
 
   try {
+    const authContext = resolveAuthRequestContext(repository, request);
+
+    if (!authContext) {
+      return NextResponse.json({ error: "authentication required" }, { status: 401 });
+    }
+
+    const workspaceId = authContext.user.workspaceId;
     const body = (await request.json()) as ReplaceCategoriesBody;
     const normalizedCategories = normalizeCategoriesPayload(body.categories ?? [], workspaceId);
 

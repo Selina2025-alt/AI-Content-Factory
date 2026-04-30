@@ -13,6 +13,7 @@ const createMonitoringRepositoryMock = vi.fn(() => repository);
 const listMonitorCategoriesMock = vi.fn();
 const listMonitorCategoryCreatorsMock = vi.fn();
 const replaceMonitorCategoriesSnapshotMock = vi.fn();
+const resolveAuthRequestContextMock = vi.fn();
 
 vi.mock("@/lib/db/monitoring-repository", () => ({
   createMonitoringRepository: createMonitoringRepositoryMock,
@@ -21,10 +22,24 @@ vi.mock("@/lib/db/monitoring-repository", () => ({
   replaceMonitorCategoriesSnapshot: replaceMonitorCategoriesSnapshotMock
 }));
 
+vi.mock("@/lib/auth/request-context", () => ({
+  resolveAuthRequestContext: resolveAuthRequestContextMock
+}));
+
 describe("monitoring categories route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     repository.database.close.mockReset();
+    resolveAuthRequestContextMock.mockReturnValue({
+      sessionToken: "token",
+      user: {
+        id: "user-1",
+        email: "admin@aicontentfactory.local",
+        displayName: "Admin",
+        workspaceId: "team-a",
+        workspaceName: "Team A"
+      }
+    });
   });
 
   it("returns categories and creators for a workspace", async () => {

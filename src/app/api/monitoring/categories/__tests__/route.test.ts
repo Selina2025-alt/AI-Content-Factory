@@ -48,7 +48,7 @@ describe("monitoring categories route", () => {
         workspaceId: "team-a",
         id: "ws-team-a-claude",
         icon: "⚡",
-        name: "Claude Code 选题监控",
+        name: "Claude Code Monitor",
         description: "desc",
         keyword: "claude code",
         createdAt: "2026-04-30T00:00:00.000Z",
@@ -60,7 +60,7 @@ describe("monitoring categories route", () => {
         workspaceId: "team-a",
         id: "ws-team-a-claude--creator-1",
         categoryId: "ws-team-a-claude",
-        name: "机器之心",
+        name: "Creator One",
         platformId: "wechat",
         createdAt: "2026-04-30T00:00:00.000Z",
         updatedAt: "2026-04-30T00:00:00.000Z"
@@ -80,13 +80,13 @@ describe("monitoring categories route", () => {
       {
         id: "ws-team-a-claude",
         icon: "⚡",
-        name: "Claude Code 选题监控",
+        name: "Claude Code Monitor",
         description: "desc",
         keyword: "claude code",
         creators: [
           {
             id: "ws-team-a-claude--creator-1",
-            name: "机器之心",
+            name: "Creator One",
             platformId: "wechat"
           }
         ]
@@ -94,7 +94,7 @@ describe("monitoring categories route", () => {
     ]);
   });
 
-  it("normalizes and saves workspace-scoped categories", async () => {
+  it("normalizes and saves workspace-scoped categories including cjk ids", async () => {
     const { POST } = await import("@/app/api/monitoring/categories/route");
     const request = new NextRequest(
       "http://localhost/api/monitoring/categories?workspaceId=team-a",
@@ -105,14 +105,28 @@ describe("monitoring categories route", () => {
             {
               id: "claude",
               icon: "⚡",
-              name: "Claude Code 选题监控",
+              name: "Claude Code Monitor",
               description: "desc",
               keyword: "Claude Code",
               creators: [
                 {
                   id: "creator-1",
-                  name: "机器之心",
+                  name: "Creator One",
                   platformId: "wechat"
+                }
+              ]
+            },
+            {
+              id: "ai转型",
+              icon: "📊",
+              name: "AI转型",
+              description: "desc-2",
+              keyword: "AI转型",
+              creators: [
+                {
+                  id: "作者-2",
+                  name: "作者 2",
+                  platformId: "zhihu"
                 }
               ]
             }
@@ -130,14 +144,28 @@ describe("monitoring categories route", () => {
         {
           id: "ws-team-a-claude",
           icon: "⚡",
-          name: "Claude Code 选题监控",
+          name: "Claude Code Monitor",
           description: "desc",
           keyword: "claude code",
           creators: [
             {
               id: "ws-team-a-claude--creator-1",
-              name: "机器之心",
+              name: "Creator One",
               platformId: "wechat"
+            }
+          ]
+        },
+        {
+          id: "ws-team-a-ai转型",
+          icon: "📊",
+          name: "AI转型",
+          description: "desc-2",
+          keyword: "ai转型",
+          creators: [
+            {
+              id: "ws-team-a-ai转型--作者-2",
+              name: "作者 2",
+              platformId: "zhihu"
             }
           ]
         }

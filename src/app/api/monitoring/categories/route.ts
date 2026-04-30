@@ -36,7 +36,7 @@ function buildWorkspacePrefix(workspaceId: string) {
 function normalizeEntityId(input: string) {
   return input
     .trim()
-    .replace(/[^a-zA-Z0-9_-]+/g, "-")
+    .replace(/[^\p{L}\p{N}_-]+/gu, "-")
     .replace(/-+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 96);

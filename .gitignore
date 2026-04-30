@@ -1,0 +1,14 @@
+node_modules/
+.next/
+.next-build/
+.next-dev*/
+coverage/
+*.tsbuildinfo
+.eslintcache
+.cache/
+.env.local
+.env*.local
+.codex-data/
+.codex-data-tests/
+*.log
+apifox_doc_snapshot.html

@@ -67,6 +67,10 @@ import {
 } from "@/lib/search-history";
 import { formatLocalDateTime } from "@/lib/time-utils";
 import type { ContentItem } from "@/lib/types";
+import {
+  DEFAULT_WORKSPACE_ID,
+  normalizeWorkspaceId
+} from "@/lib/workspace/workspace-context";
 
 interface ContentResponseMeta {
   source: string;
@@ -170,8 +174,39 @@ interface PersistedMonitoringCategoriesState {
   activeCategoryId?: string;
 }
 
-const MONITORING_CATEGORIES_STORAGE_KEY =
-  "topic-selection-agent:monitoring-categories:v1";
+interface PersistedCategoryCreatorPayload {
+  id: string;
+  name: string;
+  platformId: ReplicaTrackedPlatformId;
+}
+
+interface PersistedCategoryPayload {
+  id: string;
+  icon: string;
+  name: string;
+  description: string;
+  keyword: string;
+  creators: PersistedCategoryCreatorPayload[];
+}
+
+interface MonitoringCategoriesResponsePayload {
+  error?: string;
+  workspaceId?: string;
+  categories?: PersistedCategoryPayload[];
+}
+
+const MONITORING_CATEGORIES_STORAGE_KEY_PREFIX =
+  "topic-selection-agent:monitoring-categories:v2";
+const MONITORING_WORKSPACE_STORAGE_KEY = "topic-selection-agent:workspace-id:v1";
+
+function buildMonitoringCategoriesStorageKey(workspaceId: string) {
+  return `${MONITORING_CATEGORIES_STORAGE_KEY_PREFIX}:${workspaceId}`;
+}
+
+function withWorkspaceQuery(url: string, workspaceId: string) {
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}workspaceId=${encodeURIComponent(workspaceId)}`;
+}
 
 function isPersistedCategoryCandidate(value: unknown): value is ReplicaCategory {
   if (!value || typeof value !== "object") {
@@ -188,6 +223,52 @@ function isPersistedCategoryCandidate(value: unknown): value is ReplicaCategory 
     Array.isArray(candidate.platforms) &&
     Array.isArray(candidate.reports)
   );
+}
+
+function mergePersistedCategoriesIntoSeed(
+  persisted: PersistedCategoryPayload[]
+): ReplicaCategory[] {
+  const seedById = new Map(initialReplicaCategories.map((item) => [item.id, item]));
+
+  return persisted
+    .filter((category) => category.id && category.name)
+    .map((persistedCategory) => {
+      const seededCategory =
+        seedById.get(persistedCategory.id) ?? createReplicaCategory(persistedCategory.name);
+      const creators =
+        persistedCategory.creators.length > 0
+          ? persistedCategory.creators.map((creator) => ({
+              id: creator.id,
+              name: creator.name,
+              platformId: creator.platformId
+            }))
+          : seededCategory.creators;
+
+      return {
+        ...seededCategory,
+        id: persistedCategory.id,
+        icon: persistedCategory.icon || seededCategory.icon,
+        name: persistedCategory.name,
+        description: persistedCategory.description || seededCategory.description,
+        keyword: persistedCategory.keyword || seededCategory.keyword,
+        creators
+      };
+    });
+}
+
+function buildCategoriesPayload(categories: ReplicaCategory[]): PersistedCategoryPayload[] {
+  return categories.map((category) => ({
+    id: category.id,
+    icon: category.icon,
+    name: category.name,
+    description: category.description,
+    keyword: category.keyword,
+    creators: category.creators.map((creator) => ({
+      id: creator.id,
+      name: creator.name,
+      platformId: creator.platformId
+    }))
+  }));
 }
 
 function debugContentFlow(label: string, payload: Record<string, unknown>) {
@@ -330,6 +411,9 @@ function buildArchivedReports(detail: NonNullable<ReplicaHistoryDetail["analysis
 }
 
 export function MonitoringWorkbench() {
+  const [workspaceId, setWorkspaceId] = useState(DEFAULT_WORKSPACE_ID);
+  const [hasLoadedWorkspaceId, setHasLoadedWorkspaceId] = useState(false);
+  const [hasHydratedCategoriesFromBackend, setHasHydratedCategoriesFromBackend] = useState(false);
   const [categories, setCategories] = useState(initialReplicaCategories);
   const [activeCategoryId, setActiveCategoryId] = useState(initialReplicaCategories[0]?.id ?? "claude");
   const [activeTab, setActiveTab] = useState<ReplicaTabId>("content");
@@ -485,6 +569,31 @@ export function MonitoringWorkbench() {
 
   useEffect(() => {
     if (process.env.NODE_ENV === "test") {
+      setHasLoadedWorkspaceId(true);
+      return;
+    }
+
+    if (typeof window === "undefined") {
+      setHasLoadedWorkspaceId(true);
+      return;
+    }
+
+    try {
+      const rawWorkspaceId = window.localStorage.getItem(MONITORING_WORKSPACE_STORAGE_KEY);
+      setWorkspaceId(normalizeWorkspaceId(rawWorkspaceId));
+    } catch {
+      setWorkspaceId(DEFAULT_WORKSPACE_ID);
+    } finally {
+      setHasLoadedWorkspaceId(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!hasLoadedWorkspaceId) {
+      return;
+    }
+
+    if (process.env.NODE_ENV === "test") {
       setHasHydratedCategories(true);
       return;
     }
@@ -494,8 +603,11 @@ export function MonitoringWorkbench() {
       return;
     }
 
+    const storageKey = buildMonitoringCategoriesStorageKey(workspaceId);
+
     try {
-      const rawValue = window.localStorage.getItem(MONITORING_CATEGORIES_STORAGE_KEY);
+      window.localStorage.setItem(MONITORING_WORKSPACE_STORAGE_KEY, workspaceId);
+      const rawValue = window.localStorage.getItem(storageKey);
 
       if (!rawValue) {
         return;
@@ -526,7 +638,7 @@ export function MonitoringWorkbench() {
     } finally {
       setHasHydratedCategories(true);
     }
-  }, []);
+  }, [hasLoadedWorkspaceId, workspaceId]);
 
   useEffect(() => {
     if (
@@ -537,28 +649,116 @@ export function MonitoringWorkbench() {
       return;
     }
 
+    const storageKey = buildMonitoringCategoriesStorageKey(workspaceId);
+
     try {
       const payload: PersistedMonitoringCategoriesState = {
         categories,
         activeCategoryId
       };
 
-      window.localStorage.setItem(
-        MONITORING_CATEGORIES_STORAGE_KEY,
-        JSON.stringify(payload)
-      );
+      window.localStorage.setItem(storageKey, JSON.stringify(payload));
     } catch {
       // Ignore persistence failures to avoid interrupting runtime behavior.
     }
-  }, [activeCategoryId, categories, hasHydratedCategories]);
+  }, [activeCategoryId, categories, hasHydratedCategories, workspaceId]);
+
+  useEffect(() => {
+    if (
+      !hasLoadedWorkspaceId ||
+      !hasHydratedCategories ||
+      typeof fetch !== "function"
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function hydrateCategoriesFromBackend() {
+      try {
+        const response = await fetch(withWorkspaceQuery("/api/monitoring/categories", workspaceId), {
+          cache: "no-store"
+        });
+        const payload = (await response.json()) as MonitoringCategoriesResponsePayload;
+
+        if (!response.ok || cancelled) {
+          return;
+        }
+
+        const persistedCategories = Array.isArray(payload.categories) ? payload.categories : [];
+
+        if (persistedCategories.length > 0) {
+          const mergedCategories = mergePersistedCategoriesIntoSeed(persistedCategories);
+          setCategories(mergedCategories);
+
+          if (!mergedCategories.some((category) => category.id === activeCategoryId)) {
+            const nextActiveCategoryId = mergedCategories[0]?.id ?? "";
+            setActiveCategoryId(nextActiveCategoryId);
+            const nextCategory = mergedCategories.find((category) => category.id === nextActiveCategoryId);
+            if (nextCategory) {
+              setKeywordDraft(nextCategory.keywordTargets[0]?.keyword ?? nextCategory.keyword);
+            }
+          }
+        } else {
+          await fetch(withWorkspaceQuery("/api/monitoring/categories", workspaceId), {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              categories: buildCategoriesPayload(initialReplicaCategories)
+            })
+          });
+        }
+      } catch {
+        // Keep local state when backend persistence is unavailable.
+      } finally {
+        if (!cancelled) {
+          setHasHydratedCategoriesFromBackend(true);
+        }
+      }
+    }
+
+    void hydrateCategoriesFromBackend();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeCategoryId, hasHydratedCategories, hasLoadedWorkspaceId, workspaceId]);
+
+  useEffect(() => {
+    if (
+      process.env.NODE_ENV === "test" ||
+      !hasHydratedCategoriesFromBackend ||
+      typeof fetch !== "function"
+    ) {
+      return;
+    }
+
+    void fetch(withWorkspaceQuery("/api/monitoring/categories", workspaceId), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        categories: buildCategoriesPayload(categories)
+      })
+    }).catch(() => {
+      // Ignore sync failures and keep current UI state.
+    });
+  }, [categories, hasHydratedCategoriesFromBackend, workspaceId]);
 
   useEffect(() => {
     setHistoryEntries(loadSearchHistory());
   }, []);
 
   useEffect(() => {
+    if (!hasLoadedWorkspaceId) {
+      return;
+    }
+
     void loadGlobalAnalysisSettings();
-  }, []);
+  }, [hasLoadedWorkspaceId, workspaceId]);
 
   useEffect(() => {
     if (!analysisReports.some((item) => item.id === selectedReportId)) {
@@ -997,7 +1197,7 @@ export function MonitoringWorkbench() {
     }
 
     try {
-      const response = await fetch("/api/analysis/settings", {
+      const response = await fetch(withWorkspaceQuery("/api/analysis/settings", workspaceId), {
         cache: "no-store"
       });
       const payload = (await response.json()) as AnalysisSettingsResponsePayload;
@@ -1021,7 +1221,7 @@ export function MonitoringWorkbench() {
     setAnalysisSettingsMessage("");
 
     try {
-      const response = await fetch("/api/analysis/settings", {
+      const response = await fetch(withWorkspaceQuery("/api/analysis/settings", workspaceId), {
         method: "POST",
         headers: {
           "Content-Type": "application/json"

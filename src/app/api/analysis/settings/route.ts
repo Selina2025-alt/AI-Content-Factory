@@ -7,6 +7,7 @@ import {
   saveGlobalAnalysisSettings
 } from "@/lib/db/monitoring-repository";
 import { syncDailyAnalysisTask } from "@/lib/analysis-scheduler";
+import { resolveWorkspaceIdFromRequest } from "@/lib/workspace/workspace-context";
 
 interface AnalysisSettingsRequestBody {
   enabled?: boolean;
@@ -30,11 +31,12 @@ function normalizeTime(input: string) {
   return `${`${hours}`.padStart(2, "0")}:${`${minutes}`.padStart(2, "0")}`;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const repository = createMonitoringRepository();
+  const workspaceId = resolveWorkspaceIdFromRequest(request);
 
   try {
-    const settings = getGlobalAnalysisSettings(repository);
+    const settings = getGlobalAnalysisSettings(repository, workspaceId);
 
     return NextResponse.json({ settings });
   } finally {
@@ -44,6 +46,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   const repository = createMonitoringRepository();
+  const workspaceId = resolveWorkspaceIdFromRequest(request);
 
   try {
     const body = (await request.json()) as AnalysisSettingsRequestBody;
@@ -54,10 +57,11 @@ export async function POST(request: NextRequest) {
       model: DEFAULT_SILICONFLOW_MODEL
     };
 
-    saveGlobalAnalysisSettings(repository, settings);
+    saveGlobalAnalysisSettings(repository, settings, workspaceId);
     const taskResult = syncDailyAnalysisTask({
       enabled: settings.enabled,
-      time: settings.time
+      time: settings.time,
+      taskName: `ContentPulseDailyAnalysis-${workspaceId}`
     });
 
     return NextResponse.json({

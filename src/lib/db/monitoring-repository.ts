@@ -4,8 +4,12 @@ import {
   DEFAULT_SILICONFLOW_MODEL,
   normalizeSiliconFlowModel
 } from "@/lib/analysis-models";
-import type { ReplicaTrackedPlatformId } from "@/lib/replica-workbench-data";
+import type {
+  ReplicaCategory,
+  ReplicaTrackedPlatformId
+} from "@/lib/replica-workbench-data";
 import type { ContentItem } from "@/lib/types";
+import { DEFAULT_WORKSPACE_ID } from "@/lib/workspace/workspace-context";
 
 export type SyncRunStatus = "idle" | "running" | "success" | "failed";
 
@@ -117,6 +121,27 @@ export interface PersistedGlobalAnalysisSettings {
   model: string;
 }
 
+export interface PersistedMonitorCategory {
+  workspaceId: string;
+  id: string;
+  icon: string;
+  name: string;
+  description: string;
+  keyword: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PersistedMonitorCategoryCreator {
+  workspaceId: string;
+  id: string;
+  categoryId: string;
+  name: string;
+  platformId: ReplicaTrackedPlatformId;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PersistedSyncRun {
   id: string;
   categoryId: string;
@@ -186,6 +211,194 @@ export function coerceSyncRunStatus(value: string): SyncRunStatus {
       return value;
     default:
       return "idle";
+  }
+}
+
+function coerceCreatorPlatformId(value: string): ReplicaTrackedPlatformId {
+  switch (value) {
+    case "douyin":
+    case "xiaohongshu":
+    case "weibo":
+    case "bilibili":
+    case "twitter":
+    case "wechat":
+    case "zhihu":
+      return value;
+    default:
+      return "wechat";
+  }
+}
+
+export function listMonitorCategories(
+  repository: MonitoringRepository,
+  workspaceId: string
+): PersistedMonitorCategory[] {
+  const rows = repository.database
+    .prepare(
+      `SELECT
+        workspace_id,
+        id,
+        icon,
+        name,
+        description,
+        keyword,
+        created_at,
+        updated_at
+      FROM monitor_categories
+      WHERE workspace_id = ?
+      ORDER BY created_at ASC`
+    )
+    .all(workspaceId) as Array<{
+    workspace_id: string;
+    id: string;
+    icon: string;
+    name: string;
+    description: string;
+    keyword: string;
+    created_at: string;
+    updated_at: string;
+  }>;
+
+  return rows.map((row) => ({
+    workspaceId: row.workspace_id,
+    id: row.id,
+    icon: row.icon,
+    name: row.name,
+    description: row.description,
+    keyword: row.keyword,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  }));
+}
+
+export function listMonitorCategoryCreators(
+  repository: MonitoringRepository,
+  workspaceId: string
+): PersistedMonitorCategoryCreator[] {
+  const rows = repository.database
+    .prepare(
+      `SELECT
+        workspace_id,
+        id,
+        category_id,
+        name,
+        platform_id,
+        created_at,
+        updated_at
+      FROM monitor_category_creators
+      WHERE workspace_id = ?
+      ORDER BY created_at ASC`
+    )
+    .all(workspaceId) as Array<{
+    workspace_id: string;
+    id: string;
+    category_id: string;
+    name: string;
+    platform_id: string;
+    created_at: string;
+    updated_at: string;
+  }>;
+
+  return rows.map((row) => ({
+    workspaceId: row.workspace_id,
+    id: row.id,
+    categoryId: row.category_id,
+    name: row.name,
+    platformId: coerceCreatorPlatformId(row.platform_id),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  }));
+}
+
+export function replaceMonitorCategoriesSnapshot(
+  repository: MonitoringRepository,
+  input: {
+    workspaceId: string;
+    categories: Array<
+      Pick<
+        ReplicaCategory,
+        "id" | "icon" | "name" | "description" | "keyword" | "creators"
+      >
+    >;
+  }
+) {
+  const now = new Date().toISOString();
+  const existingRows = repository.database
+    .prepare(
+      `SELECT id, created_at
+       FROM monitor_categories
+       WHERE workspace_id = ?`
+    )
+    .all(input.workspaceId) as Array<{
+    id: string;
+    created_at: string;
+  }>;
+  const existingCreatedAtById = new Map(existingRows.map((row) => [row.id, row.created_at]));
+
+  repository.database.exec("BEGIN");
+
+  try {
+    repository.database
+      .prepare(`DELETE FROM monitor_category_creators WHERE workspace_id = ?`)
+      .run(input.workspaceId);
+    repository.database
+      .prepare(`DELETE FROM monitor_categories WHERE workspace_id = ?`)
+      .run(input.workspaceId);
+
+    const insertCategoryStatement = repository.database.prepare(
+      `INSERT INTO monitor_categories (
+        workspace_id,
+        id,
+        icon,
+        name,
+        description,
+        keyword,
+        created_at,
+        updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    );
+    const insertCreatorStatement = repository.database.prepare(
+      `INSERT INTO monitor_category_creators (
+        workspace_id,
+        id,
+        category_id,
+        name,
+        platform_id,
+        created_at,
+        updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)`
+    );
+
+    for (const category of input.categories) {
+      const categoryCreatedAt = existingCreatedAtById.get(category.id) ?? now;
+      insertCategoryStatement.run(
+        input.workspaceId,
+        category.id,
+        category.icon,
+        category.name,
+        category.description,
+        category.keyword,
+        categoryCreatedAt,
+        now
+      );
+
+      for (const creator of category.creators) {
+        insertCreatorStatement.run(
+          input.workspaceId,
+          creator.id,
+          category.id,
+          creator.name,
+          creator.platformId,
+          now,
+          now
+        );
+      }
+    }
+
+    repository.database.exec("COMMIT");
+  } catch (error) {
+    repository.database.exec("ROLLBACK");
+    throw error;
   }
 }
 
@@ -988,9 +1201,12 @@ export function listAnalysisSnapshotsByKeyword(
 
 export function saveGlobalAnalysisSettings(
   repository: MonitoringRepository,
-  input: PersistedGlobalAnalysisSettings
+  input: PersistedGlobalAnalysisSettings,
+  workspaceId = DEFAULT_WORKSPACE_ID
 ) {
   const normalizedModel = normalizeSiliconFlowModel(input.model);
+  const singletonKey =
+    workspaceId === DEFAULT_WORKSPACE_ID ? "global" : `global:${workspaceId}`;
 
   repository.database
     .prepare(
@@ -1001,7 +1217,7 @@ export function saveGlobalAnalysisSettings(
         provider,
         model,
         updated_at
-      ) VALUES ('global', ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?)
       ON CONFLICT(singleton_key) DO UPDATE SET
         enabled = excluded.enabled,
         time = excluded.time,
@@ -1010,6 +1226,7 @@ export function saveGlobalAnalysisSettings(
         updated_at = excluded.updated_at`
     )
     .run(
+      singletonKey,
       input.enabled ? 1 : 0,
       input.time,
       input.provider,
@@ -1019,15 +1236,18 @@ export function saveGlobalAnalysisSettings(
 }
 
 export function getGlobalAnalysisSettings(
-  repository: MonitoringRepository
+  repository: MonitoringRepository,
+  workspaceId = DEFAULT_WORKSPACE_ID
 ): PersistedGlobalAnalysisSettings {
+  const singletonKey =
+    workspaceId === DEFAULT_WORKSPACE_ID ? "global" : `global:${workspaceId}`;
   const row = repository.database
     .prepare(
       `SELECT enabled, time, provider, model
       FROM analysis_settings
-      WHERE singleton_key = 'global'`
+      WHERE singleton_key = ?`
     )
-    .get() as
+    .get(singletonKey) as
     | {
         enabled: number;
         time: string;

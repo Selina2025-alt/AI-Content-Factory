@@ -36,14 +36,15 @@ describe("analysis settings route", () => {
     });
     syncDailyAnalysisTaskMock.mockReturnValue({
       ok: true,
-      taskName: "ContentPulseDailyAnalysis",
+      taskName: "ContentPulseDailyAnalysis-default-workspace",
       message: "Daily analysis task scheduled at 09:30"
     });
   });
 
   it("returns the saved global analysis settings", async () => {
     const { GET } = await import("@/app/api/analysis/settings/route");
-    const response = await GET();
+    const request = new NextRequest("http://localhost/api/analysis/settings");
+    const response = await GET(request);
     const payload = await response.json();
 
     expect(payload).toEqual({
@@ -76,11 +77,13 @@ describe("analysis settings route", () => {
         time: "09:30",
         provider: "SiliconFlow",
         model: "Pro/zai-org/GLM-5"
-      })
+      }),
+      "default-workspace"
     );
     expect(syncDailyAnalysisTaskMock).toHaveBeenCalledWith({
       enabled: true,
-      time: "09:30"
+      time: "09:30",
+      taskName: "ContentPulseDailyAnalysis-default-workspace"
     });
     expect(payload).toEqual({
       settings: {
@@ -91,7 +94,7 @@ describe("analysis settings route", () => {
       },
       task: {
         ok: true,
-        taskName: "ContentPulseDailyAnalysis",
+        taskName: "ContentPulseDailyAnalysis-default-workspace",
         message: "Daily analysis task scheduled at 09:30"
       }
     });

@@ -2,6 +2,35 @@ import type { MonitoringDatabase } from "@/lib/db/database";
 
 export function ensureMonitoringSchema(database: MonitoringDatabase) {
   database.exec(`
+    CREATE TABLE IF NOT EXISTS monitor_categories (
+      workspace_id TEXT NOT NULL,
+      id TEXT NOT NULL,
+      icon TEXT NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT NOT NULL,
+      keyword TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (workspace_id, id)
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS monitor_categories_workspace_name_idx
+      ON monitor_categories (workspace_id, name);
+
+    CREATE TABLE IF NOT EXISTS monitor_category_creators (
+      workspace_id TEXT NOT NULL,
+      id TEXT NOT NULL,
+      category_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      platform_id TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (workspace_id, id)
+    );
+
+    CREATE INDEX IF NOT EXISTS monitor_category_creators_lookup_idx
+      ON monitor_category_creators (workspace_id, category_id, created_at ASC);
+
     CREATE TABLE IF NOT EXISTS keyword_targets (
       id TEXT PRIMARY KEY,
       category_id TEXT NOT NULL,
